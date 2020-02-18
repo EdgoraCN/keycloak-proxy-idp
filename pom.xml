@@ -15,7 +15,7 @@
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<keycloak.version>8.0.1</keycloak.version>
-		<infinispan.version>9.4.16.Final</infinispan.version>
+		<infinispan.version>10.1.2.Final</infinispan.version>
 	</properties>
 
 	<build>
