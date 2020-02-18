@@ -29,7 +29,7 @@ public class WechatWorkIdentityProviderFactory extends AbstractIdentityProviderF
 
     @Override
     public String getName() {
-        return "WechatWork";
+        return "企业微信登陆";
     }
 
     @Override

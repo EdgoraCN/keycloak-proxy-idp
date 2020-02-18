@@ -3,10 +3,9 @@ package org.keycloak.social.wechat;
 import org.keycloak.broker.oidc.OAuth2IdentityProviderConfig;
 import org.keycloak.models.IdentityProviderModel;
 
-
 public class WechatWorkProviderConfig extends OAuth2IdentityProviderConfig {
 
-    public WechatWorkProviderConfig (IdentityProviderModel model) {
+    public WechatWorkProviderConfig(IdentityProviderModel model) {
         super(model);
     }
 

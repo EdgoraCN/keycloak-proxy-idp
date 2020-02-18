@@ -30,7 +30,8 @@ public class WechatWorkUserAttributeMapper extends AbstractJsonUserAttributeMapp
     }
 
     @Override
-    public void updateBrokeredUser(KeycloakSession session, RealmModel realm, UserModel user, IdentityProviderMapperModel mapperModel, BrokeredIdentityContext context) {
+    public void updateBrokeredUser(KeycloakSession session, RealmModel realm, UserModel user,
+            IdentityProviderMapperModel mapperModel, BrokeredIdentityContext context) {
         user.setSingleAttribute(PROFILE_MOBILE, context.getUserAttribute(PROFILE_MOBILE));
         user.setSingleAttribute(PROFILE_GENDER, context.getUserAttribute(PROFILE_GENDER));
         user.setSingleAttribute(PROFILE_STATUS, context.getUserAttribute(PROFILE_STATUS));

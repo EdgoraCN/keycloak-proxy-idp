@@ -1,25 +1,40 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 	<parent>
 		<groupId>org.keycloak</groupId>
 		<artifactId>keycloak-parent</artifactId>
-		<version>6.0.1</version>
+		<version>8.0.1</version>
 	</parent>
-    <modelVersion>4.0.0</modelVersion>
-<!--	<groupId>org.keycloak</groupId>-->
-    <artifactId>keycloak-services-social-wechat-work</artifactId>
-<!--    <version>0.0.5</version>-->
-    <name>Keycloak Services Social Wechat Work</name>
-    <description />
+	<modelVersion>4.0.0</modelVersion>
+	<!--	<groupId>org.keycloak</groupId>-->
+	<artifactId>keycloak-services-social-wechat-work</artifactId>
+	<!--    <version>0.0.5</version>-->
+	<name>Keycloak Services Social Wechat Work</name>
+	<description />
 	<packaging>jar</packaging>
 	<properties>
-        <maven.compiler.target>1.8</maven.compiler.target>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <keycloak.version>6.0.1</keycloak.version>
-		<infinispan.version>9.4.8.Final</infinispan.version>
-    </properties>
+		<maven.compiler.target>1.8</maven.compiler.target>
+		<maven.compiler.source>1.8</maven.compiler.source>
+		<keycloak.version>8.0.1</keycloak.version>
+		<infinispan.version>9.4.16.Final</infinispan.version>
+	</properties>
 
 	<build>
+		<plugins>
+
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-jar-plugin</artifactId>
+				<configuration>
+					<archive>
+						<manifestEntries>
+							<Dependencies>org.keycloak.keycloak-services</Dependencies>
+							<Dependencies>me.chanjar.weixin.cp</Dependencies>
+						</manifestEntries>
+					</archive>
+				</configuration>
+			</plugin>
+		</plugins>
+
 		<pluginManagement>
 			<plugins>
 				<plugin>
@@ -62,10 +77,10 @@
 			</plugins>
 		</pluginManagement>
 	</build>
-    
-    <repositories>
+
+	<repositories>
 		<repository>
-			<!-- Maven 自带的中央仓库使用的Id为central 如果其他的仓库声明也是用该Id 就会覆盖中央仓库的配置 --> 
+			<!-- Maven 自带的中央仓库使用的Id为central 如果其他的仓库声明也是用该Id 就会覆盖中央仓库的配置 -->
 			<id>central</id>
 			<name>mvnrepository</name>
 			<url>http://www.mvnrepository.com/</url>
@@ -77,31 +92,31 @@
 				<enabled>false</enabled>
 			</snapshots>
 		</repository>
-	</repositories>    
-    <dependencies>
+	</repositories>
+	<dependencies>
 		<dependency>
 			<groupId>org.keycloak</groupId>
 			<artifactId>keycloak-core</artifactId>
 			<version>${keycloak.version}</version>
 		</dependency>
-   		<dependency>
-		    <groupId>org.keycloak</groupId>
-		    <artifactId>keycloak-server-spi-private</artifactId>
-		    <version>${keycloak.version}</version>
-		    <scope>provided</scope>
-		</dependency>
-     <!-- https://mvnrepository.com/artifact/org.keycloak/keycloak-services -->
 		<dependency>
-		    <groupId>org.keycloak</groupId>
-		    <artifactId>keycloak-services</artifactId>
-		    <version>${keycloak.version}</version>
-		    <scope>provided</scope>
+			<groupId>org.keycloak</groupId>
+			<artifactId>keycloak-server-spi-private</artifactId>
+			<version>${keycloak.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<!-- https://mvnrepository.com/artifact/org.keycloak/keycloak-services -->
+		<dependency>
+			<groupId>org.keycloak</groupId>
+			<artifactId>keycloak-services</artifactId>
+			<version>${keycloak.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
-		    <groupId>org.keycloak</groupId>
-		    <artifactId>keycloak-server-spi</artifactId>
-		    <version>${keycloak.version}</version>
-		    <scope>provided</scope>
+			<groupId>org.keycloak</groupId>
+			<artifactId>keycloak-server-spi</artifactId>
+			<version>${keycloak.version}</version>
+			<scope>provided</scope>
 		</dependency>
 		<dependency>
 			<groupId>org.infinispan</groupId>
@@ -109,11 +124,13 @@
 			<version>${infinispan.version}</version>
 			<scope>provided</scope>
 		</dependency>
+
 		<dependency>
 			<groupId>org.infinispan</groupId>
 			<artifactId>infinispan-commons</artifactId>
 			<version>${infinispan.version}</version>
 			<scope>provided</scope>
 		</dependency>
-  </dependencies>
+	</dependencies>
+
 </project>
