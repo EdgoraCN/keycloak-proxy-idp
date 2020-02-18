@@ -16,4 +16,4 @@ To install the social wechat work one has to:
 
 Be ware you need to fill in corpid, agentid and agent secret.
 
-based on https://github.com/jyqq163/keycloak-services-social-weixin
+based on  https://github.com/kkzxak47/keycloak-services-social-wechatwork
