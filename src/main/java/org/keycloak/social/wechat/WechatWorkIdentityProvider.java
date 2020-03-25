@@ -53,11 +53,6 @@ import java.util.stream.Stream;
 public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<WechatWorkProviderConfig>
         implements SocialIdentityProvider<WechatWorkProviderConfig> {
 
-
-
-
-
-
     public static final String AUTH_URL = "https://open.weixin.qq.com/connect/oauth2/authorize";
     public static final String QRCODE_AUTH_URL = "https://open.work.weixin.qq.com/wwopen/sso/qrConnect"; // 企业微信外使用
     public static final String TOKEN_URL = "https://qyapi.weixin.qq.com/cgi-bin/gettoken";
@@ -194,9 +189,7 @@ public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<W
         }
 
         Stream.of(userInfoKeys).forEach(i -> {
-
             String value = getJsonProperty(profile, i);
-
             identity.setUserAttribute(alias + "." + i, value != null ? value : "N/A");
         });
 
