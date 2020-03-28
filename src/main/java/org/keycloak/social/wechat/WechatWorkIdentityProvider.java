@@ -17,14 +17,12 @@
 package org.keycloak.social.wechat;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import org.apache.http.impl.client.DefaultHttpClient;
 import org.infinispan.Cache;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.manager.DefaultCacheManager;
 import org.keycloak.OAuth2Constants;
 import org.keycloak.broker.oidc.AbstractOAuth2IdentityProvider;
 import org.keycloak.broker.oidc.mappers.AbstractJsonUserAttributeMapper;
-
 import org.keycloak.broker.provider.AuthenticationRequest;
 import org.keycloak.broker.provider.BrokeredIdentityContext;
 import org.keycloak.broker.provider.IdentityBrokerException;
@@ -38,31 +36,31 @@ import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.services.ErrorPage;
 import org.keycloak.services.messages.Messages;
+import org.keycloak.services.validation.Validation;
 
 import javax.ws.rs.GET;
-import javax.ws.rs.Produces;
 import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.*;
-
-import java.io.IOException;
 import java.net.URI;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
+
 
 public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<WechatWorkProviderConfig>
         implements SocialIdentityProvider<WechatWorkProviderConfig> {
 
     public static final String AUTH_URL = "https://open.weixin.qq.com/connect/oauth2/authorize";
-    public static final String QRCODE_AUTH_URL = "https://open.work.weixin.qq.com/wwopen/sso/qrConnect"; // 企业微信外使用
-    public static final String TOKEN_URL = "https://qyapi.weixin.qq.com/cgi-bin/gettoken";
+
+    public static final String QRCODE_AUTH_URL = "/wwopen/sso/qrConnect";  // 企业微信外使用
+    public static final String TOKEN_URL = "/cgi-bin/gettoken";
 
     public static final String DEFAULT_SCOPE = "snsapi_base";
     public static final String DEFAULT_RESPONSE_TYPE = "code";
     public static final String WEIXIN_REDIRECT_FRAGMENT = "wechat_redirect";
 
-    public static final String PROFILE_URL = "https://qyapi.weixin.qq.com/cgi-bin/user/getuserinfo";
-    public static final String PROFILE_DETAIL_URL = "https://qyapi.weixin.qq.com/cgi-bin/user/get";
+    public static final String PROFILE_URL_NO_HOST = "/cgi-bin/user/getuserinfo";
+    public static final String PROFILE_DETAIL_URL_NO_HOST = "/cgi-bin/user/get";
 
     public static final String OAUTH2_PARAMETER_CLIENT_ID = "appid";
     public static final String OAUTH2_PARAMETER_AGENT_ID = "agentid";
@@ -74,18 +72,24 @@ public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<W
     public static final String PROFILE_GENDER = "gender";
     public static final String PROFILE_STATUS = "status";
     public static final String PROFILE_ENABLE = "enable";
+    public static final String PROFILE_USERID = "userid";
 
     private String ACCESS_TOKEN_KEY = "access_token";
     private String ACCESS_TOKEN_CACHE_KEY = "wechat_work_sso_access_token";
 
     private static DefaultCacheManager _cacheManager;
-    public static Cache<String, String> sso_cache = get_cache();
-
     public static String WECHAT_WORK_CACHE_NAME = "wechat_work_sso";
+    public static Cache<String, String> sso_cache = get_cache();
 
 
     public static String[] userInfoKeys = new String[]{"userid", "name", "position", "mobile", "gender", "email",
             "avatar", "thumb_avatar", "telephone", "enable", "alias", "address"};
+
+
+    //    public static final String PROFILE_URL_NO_HOST = "/cgi-bin/user/getuserinfo";
+//    public static final String PROFILE_DETAIL_URL_NO_HOST = "/cgi-bin/user/get";
+    private String profileUrl;
+    private String profileDetailUrl;
 
     private static DefaultCacheManager getCacheManager() {
         if (_cacheManager == null) {
@@ -121,7 +125,7 @@ public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<W
                     logger.debug("retry in renew access token " + j.toString());
                 }
                 token = getJsonProperty(j, ACCESS_TOKEN_KEY);
-                long timeout = Integer.valueOf(getJsonProperty(j, "expires_in")) - 1000;
+                long timeout = Integer.valueOf(getJsonProperty(j, "expires_in"));
                 sso_cache.put(ACCESS_TOKEN_CACHE_KEY, token, timeout, TimeUnit.SECONDS);
             }
             return token;
@@ -134,10 +138,10 @@ public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<W
 
     private JsonNode _renew_access_token() {
         try {
-            JsonNode j = SimpleHttp.doGet(TOKEN_URL, session).param(WEIXIN_CORP_ID, getConfig().getClientId())
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON + ";charset=UTF-8")
+            JsonNode j = SimpleHttp.doGet(getConfig().getTokenUrl(), session)
+                    .param(WEIXIN_CORP_ID, getConfig().getClientId())
                     .param(WEIXIN_CORP_SECRET, getConfig().getClientSecret()).asJson();
-            // logger.info("request wechat work access token " + j.toString());
+//            logger.info("request wechat work access token " + j.toString());
             return j;
         } catch (Exception e) {
             logger.error(e);
@@ -153,9 +157,24 @@ public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<W
 
     public WechatWorkIdentityProvider(KeycloakSession session, WechatWorkProviderConfig config) {
         super(session, config);
+        String baseUrl = config.getBaseUrl();
         config.setAuthorizationUrl(AUTH_URL);
-        config.setQrcodeAuthorizationUrl(QRCODE_AUTH_URL);
-        config.setTokenUrl(TOKEN_URL);
+        String weworkBaseUrl = "https://qyapi.weixin.qq.com";
+        String openBaseUrl = "https://open.work.weixin.qq.com";
+        String needUrl = Validation.isBlank(baseUrl) ? weworkBaseUrl : baseUrl;
+        if (Validation.isBlank(baseUrl)) {
+            config.setQrcodeAuthorizationUrl(openBaseUrl + QRCODE_AUTH_URL);
+        } else {
+            config.setQrcodeAuthorizationUrl(baseUrl + QRCODE_AUTH_URL);
+        }
+
+        config.setTokenUrl(needUrl + TOKEN_URL);
+        this.profileUrl = needUrl + PROFILE_URL_NO_HOST;
+        this.profileDetailUrl = needUrl + PROFILE_DETAIL_URL_NO_HOST;
+
+
+        logger.infof("config %s", config.getBaseUrl());
+
     }
 
     @Override
@@ -170,9 +189,12 @@ public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<W
 
     @Override
     protected BrokeredIdentityContext extractIdentityFromProfile(EventBuilder event, JsonNode profile) {
+
         logger.info(profile.toString());
+
         // profile: see https://work.weixin.qq.com/api/doc#90000/90135/90196
         BrokeredIdentityContext identity = new BrokeredIdentityContext((getJsonProperty(profile, "userid")));
+
 
         String alias = getConfig().getAlias();
 
@@ -209,61 +231,36 @@ public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<W
         BrokeredIdentityContext context = null;
         try {
 
-
-            JsonNode jsonNode = SimpleHttp.doGet(PROFILE_URL, new DefaultHttpClient())
+            JsonNode profile;
+            profile = SimpleHttp.doGet(profileUrl, session)
                     .param(ACCESS_TOKEN_KEY, accessToken)
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON + ";charset=UTF-8")
                     .param("code", authorizationCode)
                     .asJson();
-
-            String userid = jsonNode.get("UserId").asText();
-
-            JsonNode userInfo = SimpleHttp.doGet(PROFILE_DETAIL_URL, new DefaultHttpClient()).param(ACCESS_TOKEN_KEY, accessToken)
-                    .param("userid", userid)
-                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON + ";charset=UTF-8")
+            // {"UserId":"ZhongXun","DeviceId":"10000556333395ZN","errcode":0,"errmsg":"ok"}
+            logger.info("profile first " + profile.toString());
+            long errcode = profile.get("errcode").asInt();
+            if (errcode == 42001 || errcode == 40014) {
+                accessToken = reset_access_token();
+                profile = SimpleHttp.doGet(profileUrl, session)
+                        .param(ACCESS_TOKEN_KEY, accessToken)
+                        .param("code", authorizationCode)
+                        .asJson();
+                logger.info("profile retried " + profile.toString());
+            }
+            if (errcode != 0) {
+                throw new IdentityBrokerException("get user info failed, please retry");
+            }
+            profile = SimpleHttp.doGet(profileDetailUrl, session)
+                    .param(ACCESS_TOKEN_KEY, accessToken)
+                    .param("userid", getJsonProperty(profile, "UserId"))
                     .asJson();
-
-            context = extractIdentityFromProfile(null, userInfo);
-        } catch (IOException e) {
-            String a = null;
-            System.out.println(a);
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+//            logger.info("get userInfo =" + profile.toString());
+            context = extractIdentityFromProfile(null, profile);
+        } catch (Exception e) {
+            logger.error(e);
+            e.printStackTrace(System.out);
         }
-
-        // try {
-        // JsonNode profile;
-        // profile = SimpleHttp.doGet(PROFILE_URL, session).param(ACCESS_TOKEN_KEY,
-        // accessToken)
-        // .param("code", authorizationCode).asJson();
-        // //
-        // {"UserId":"ZhongXun","DeviceId":"10000556333395ZN","errcode":0,"errmsg":"ok"}
-        // logger.info("profile first " + profile.toString());
-        // long errcode = profile.get("errcode").asInt();
-        // if (errcode == 42001 || errcode == 40014) {
-        // accessToken = reset_access_token();
-        // profile = SimpleHttp.doGet(PROFILE_URL, session).param(ACCESS_TOKEN_KEY,
-        // accessToken)
-        // .param("code", authorizationCode).asJson();
-        // logger.info("profile retried " + profile.toString());
-        // }
-        // if (errcode != 0) {
-        // throw new IdentityBrokerException("get user info failed, please retry");
-        // }
-        // profile = SimpleHttp.doGet(PROFILE_DETAIL_URL,
-        // session).param(ACCESS_TOKEN_KEY, accessToken)
-        // .param("userid", getJsonProperty(profile, "UserId")).asJson();
-        // // logger.info("get userInfo =" + profile.toString());
-        // context = extractIdentityFromProfile(null, profile);
-        // } catch (Exception e) {
-        // logger.error(e);
-        // String a = null;
-        // System.out.println(a.toString());
-        // e.printStackTrace(System.out);
-        // }
-        if (context == null) {
-            throw new IdentityBrokerException("no user content");
-        }
+        context.getContextData().put(FEDERATED_ACCESS_TOKEN, accessToken);
         return context;
     }
 
@@ -292,15 +289,18 @@ public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<W
         String ua = request.getHttpRequest().getHttpHeaders().getHeaderString("user-agent").toLowerCase();
         if (ua.contains("wxwork")) {
             uriBuilder = UriBuilder.fromUri(getConfig().getAuthorizationUrl());
-            uriBuilder.queryParam(OAUTH2_PARAMETER_CLIENT_ID, getConfig().getClientId())
+            uriBuilder
+                    .queryParam(OAUTH2_PARAMETER_CLIENT_ID, getConfig().getClientId())
                     .queryParam(OAUTH2_PARAMETER_REDIRECT_URI, request.getRedirectUri())
                     .queryParam(OAUTH2_PARAMETER_RESPONSE_TYPE, DEFAULT_RESPONSE_TYPE)
                     .queryParam(OAUTH2_PARAMETER_SCOPE, getConfig().getDefaultScope())
-                    .queryParam(OAUTH2_PARAMETER_STATE, request.getState().getEncoded());
+                    .queryParam(OAUTH2_PARAMETER_STATE, request.getState().getEncoded())
+            ;
             uriBuilder.fragment(WEIXIN_REDIRECT_FRAGMENT);
         } else {
             uriBuilder = UriBuilder.fromUri(getConfig().getQrcodeAuthorizationUrl());
-            uriBuilder.queryParam(OAUTH2_PARAMETER_CLIENT_ID, getConfig().getClientId())
+            uriBuilder
+                    .queryParam(OAUTH2_PARAMETER_CLIENT_ID, getConfig().getClientId())
                     .queryParam(OAUTH2_PARAMETER_AGENT_ID, getConfig().getAgentId())
                     .queryParam(OAUTH2_PARAMETER_REDIRECT_URI, request.getRedirectUri())
                     .queryParam(OAUTH2_PARAMETER_STATE, request.getState().getEncoded());
@@ -332,12 +332,11 @@ public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<W
         }
 
         @GET
-        @Produces({MediaType.APPLICATION_JSON, "text/html; charset=UTF-8"})
         public Response authResponse(@QueryParam(AbstractOAuth2IdentityProvider.OAUTH2_PARAMETER_STATE) String state,
                                      @QueryParam(AbstractOAuth2IdentityProvider.OAUTH2_PARAMETER_CODE) String authorizationCode,
-                                     @QueryParam(OAuth2Constants.ERROR) String error, @QueryParam("appid") String client_id) {
+                                     @QueryParam(OAuth2Constants.ERROR) String error,
+                                     @QueryParam("appid") String client_id) {
             logger.info("OAUTH2_PARAMETER_CODE=" + authorizationCode);
-
 
             if (error != null) {
                 logger.error(error + " for broker login " + getConfig().getProviderId());
@@ -374,9 +373,7 @@ public class WechatWorkIdentityProvider extends AbstractOAuth2IdentityProvider<W
     }
 
     @Override
-    public void updateBrokeredUser(KeycloakSession session, RealmModel realm, UserModel user,
-                                   BrokeredIdentityContext context) {
-
+    public void updateBrokeredUser(KeycloakSession session, RealmModel realm, UserModel user, BrokeredIdentityContext context) {
         // 更新用户信息
         String alias = getConfig().getAlias();
         Stream.of(userInfoKeys).forEach(i -> {

@@ -17,8 +17,8 @@
 package org.keycloak.social.wechat;
 
 import org.keycloak.broker.provider.AbstractIdentityProviderFactory;
-import org.keycloak.models.IdentityProviderModel;
 import org.keycloak.broker.social.SocialIdentityProviderFactory;
+import org.keycloak.models.IdentityProviderModel;
 import org.keycloak.models.KeycloakSession;
 
 
@@ -38,8 +38,8 @@ public class WechatWorkIdentityProviderFactory extends AbstractIdentityProviderF
     }
 
     @Override
-    public <C extends IdentityProviderModel> C createConfig() {
-        return null;
+    public WechatWorkProviderConfig createConfig() {
+        return new  WechatWorkProviderConfig();
     }
 
     @Override
