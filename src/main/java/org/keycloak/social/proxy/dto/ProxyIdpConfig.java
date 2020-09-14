@@ -1,14 +1,12 @@
 package org.keycloak.social.proxy.dto;
 
 public class ProxyIdpConfig {
+
+    private String alias;
     /**
      * idp proxy type
      */
     private String idpType;
-    /**
-     * idpId which load from redis or database
-     */
-    private String id;
     /**
      * idp setting
      */
@@ -33,14 +31,6 @@ public class ProxyIdpConfig {
 
     public void setIdpType(String idpType) {
         this.idpType = idpType;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    public void setId(String id) {
-        this.id = id;
     }
 
     public String getClientId() {
@@ -129,6 +119,14 @@ public class ProxyIdpConfig {
 
     public void setProxyTimeout(Integer proxyTimeout) {
         this.proxyTimeout = proxyTimeout;
+    }
+
+    public String getAlias() {
+        return alias;
+    }
+
+    public void setAlias(String alias) {
+        this.alias = alias;
     }
 
 }
