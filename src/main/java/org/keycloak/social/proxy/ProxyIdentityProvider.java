@@ -20,6 +20,7 @@ import java.lang.reflect.Field;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Stream;
 
 import javax.ws.rs.GET;
@@ -183,7 +184,8 @@ public class ProxyIdentityProvider extends AbstractIdentityProvider<ProxyProvide
     public BrokeredIdentityContext getFederatedIdentity(AuthUser user,Map<String, Object> userData) {
         Object at = user.getToken().get("accessToken");
         if (at == null) {
-            throw new IdentityBrokerException("No access token available");
+           logger.warn("No access token available");
+           at= UUID.randomUUID().toString().toLowerCase();
         }
         String accessToken = at.toString();
         BrokeredIdentityContext context = extractIdentityFromProfile(user,userData);
