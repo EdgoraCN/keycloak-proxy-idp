@@ -71,7 +71,6 @@ public class ProxyIdentityProvider extends AbstractIdentityProvider<ProxyProvide
             "gender", "company", "location" };
     private String proxyUrl;
     private String idpType;
-    private String id;
     private Map<String, Object> extraConfig = new HashMap<>();
     private String authorizeUrl;
     private String registerURL;
@@ -79,36 +78,44 @@ public class ProxyIdentityProvider extends AbstractIdentityProvider<ProxyProvide
     private String loginURL;
     private String refreshURL;
     private String revokeURL;
+    private static final Map<String,String> LOGIN_CACHE = new HashMap<>();
 
     private HttpClient getHttpClient() {
         if (HTTP_CLIENT == null) {
-            RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(5000).setConnectTimeout(5000)
-                    .setConnectionRequestTimeout(5000).build();
+            RequestConfig defaultRequestConfig = RequestConfig.custom().setSocketTimeout(10000).setConnectTimeout(10000)
+                    .setConnectionRequestTimeout(10000).build();
             HTTP_CLIENT = HttpClients.custom().setDefaultRequestConfig(defaultRequestConfig).build();
         }
         return HTTP_CLIENT;
     }
-    private AuthResponse<Map<String, Object>> register() {
+    private void register() {
+        String cachedUrl = LOGIN_CACHE.get(this.getConfig().getAlias());
+        if(cachedUrl!=null&&!cachedUrl.trim().equals("")){
+            this.authorizeUrl = cachedUrl;
+            return;
+        }
         Map<String, Object> config = new HashMap<>();
-
         config.put("idpType", this.idpType);
         config.put("clientId", getConfig().getClientId());
         config.put("clientSecret", getConfig().getClientSecret());
         config.put("scope", getConfig().getDefaultScope());
         config.putAll(this.extraConfig);
+        config.put("alias",getConfig().getAlias());
         try {
             String responseBody = SimpleHttp.doPost(this.registerURL, this.getHttpClient()).json(config).asString();
             AuthResponse<Map<String, Object>> res = SimpleHttp.mapper.readValue(responseBody,AuthResponse.class);
             logger.info("registry response=" + responseBody);
-            return res;
+            if(res.ok()) {
+                this.authorizeUrl = res.getData().get("authorizeUrl").toString();
+                LOGIN_CACHE.put(this.getConfig().getAlias(),this.authorizeUrl);
+            }
         } catch (Exception e) {
             logger.error("register  proxy idp failed", e);
         }
-        return null;
     }
 
     private Map<String,Object> login(String redirectUri,MultivaluedMap<String, String> map) {
-        final UriBuilder uriBuilder = UriBuilder.fromUri(this.loginURL + "/" + this.id);
+        final UriBuilder uriBuilder = UriBuilder.fromUri(this.loginURL + "/" + this.getConfig().getAlias());
         Map<String,String> data = new HashMap<>();
         data.put("redirectUri", redirectUri);
         for (String key : map.keySet()) {
@@ -141,30 +148,7 @@ public class ProxyIdentityProvider extends AbstractIdentityProvider<ProxyProvide
         this.revokeURL = this.proxyUrl + "/auth/revoke";
         this.registerURL = this.proxyUrl + "/auth/register";
         this.extraConfig = config.getExtraConfigMap();
-        if (this.extraConfig.get("id") != null) {
-            this.id = this.extraConfig.get("id").toString();
-        }
-        this.extraConfig.put("idpType", idpType);
-        
-        AuthResponse<Map<String, Object>> res = this.register();
-        if (res != null&&res.ok()) {
-            this.id = res.getData().get("id").toString();
-            this.extraConfig.put("id", id);
-            this.authorizeUrl = res.getData().get("authorizeUrl").toString();
-            if(this.idpType.equals("proxy")){
-                this.extraConfig.put("idpType", res.getData().get("idpType").toString());
-            }
-        }
-        this.extraConfig.put("id", id);
-        // this.getConfig().setAlias(this.extraConfig.get("idpType").toString());
-        // this.getConfig().setProviderId(this.extraConfig.get("idpType").toString());
-        this.getConfig().setDisplayName(this.extraConfig.get("idpType").toString());
-        try {
-            this.getConfig().setExtraConfig(SimpleHttp.mapper.writeValueAsString(extraConfig));
-        } catch (JsonProcessingException e) {
-            logger.error(e);
-        }
-
+        this.register();
     }
 
     @Override
@@ -211,6 +195,7 @@ public class ProxyIdentityProvider extends AbstractIdentityProvider<ProxyProvide
     @Override
     public Response performLogin(AuthenticationRequest request) {
         try {
+            this.register();
             String url = this.authorizeUrl.replace("{state}", request.getState().getEncoded()).replace("http://redirectUri",
                     request.getRedirectUri());
             URI authorizationUrl = URI.create(url);
@@ -308,5 +293,8 @@ public class ProxyIdentityProvider extends AbstractIdentityProvider<ProxyProvide
     public Response retrieveToken(KeycloakSession session, FederatedIdentityModel identity) {
         // TODO Auto-generated method stub
         return null;
+    }
+    public String getDefaultScopes(){
+        return "";
     }
 }

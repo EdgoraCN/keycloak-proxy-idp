@@ -7,9 +7,10 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
 import org.jboss.logging.Logger;
+import org.keycloak.broker.oidc.OAuth2IdentityProviderConfig;
 import org.keycloak.models.IdentityProviderModel;
 
-public class ProxyProviderConfig extends IdentityProviderModel {
+public class ProxyProviderConfig extends IdentityProviderModel{
     protected static final Logger logger = Logger.getLogger(ProxyProviderConfig.class);
 
     public ProxyProviderConfig(IdentityProviderModel model) {
