@@ -2,19 +2,19 @@
 	<parent>
 		<groupId>org.keycloak</groupId>
 		<artifactId>keycloak-parent</artifactId>
-		<version>9.0.2</version>
+		<version>11.0.2</version>
 	</parent>
 	<modelVersion>4.0.0</modelVersion>
 	<!--	<groupId>org.keycloak</groupId>-->
-	<artifactId>keycloak-services-social-wechat-work</artifactId>
-	<version>9.0.2</version>
-	<name>Keycloak Services Social Wechat Work</name>
+	<artifactId>keycloak-proxy-idp</artifactId>
+	<version>11.0.2</version>
+	<name>Keycloak Services Social IDP Proxy</name>
 	<description />
 	<packaging>jar</packaging>
 	<properties>
 		<maven.compiler.target>1.8</maven.compiler.target>
 		<maven.compiler.source>1.8</maven.compiler.source>
-		<keycloak.version>9.0.2</keycloak.version>
+		<keycloak.version>11.0.2</keycloak.version>
 		<infinispan.version>10.1.2.Final</infinispan.version>
 	</properties>
 
@@ -42,19 +42,6 @@
 			<groupId>org.keycloak</groupId>
 			<artifactId>keycloak-server-spi</artifactId>
 			<version>${keycloak.version}</version>
-			<scope>provided</scope>
-		</dependency>
-		<dependency>
-			<groupId>org.infinispan</groupId>
-			<artifactId>infinispan-core</artifactId>
-			<version>${infinispan.version}</version>
-			<scope>provided</scope>
-		</dependency>
-
-		<dependency>
-			<groupId>org.infinispan</groupId>
-			<artifactId>infinispan-commons</artifactId>
-			<version>${infinispan.version}</version>
 			<scope>provided</scope>
 		</dependency>
 	</dependencies>

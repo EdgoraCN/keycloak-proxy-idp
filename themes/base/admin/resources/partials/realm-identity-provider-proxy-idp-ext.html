@@ -1,0 +1,58 @@
+<div class="form-group">
+    <label class="col-md-2 control-label" for="proxyUrl"><span class="required">*</span>{{:: 'identity-provider.idp-proxy.proxyUrl.label' | translate}}</label>
+    <div class="col-md-6">
+        <input class="form-control" id="proxyUrl" ng-model="identityProvider.config.proxyUrl" required>
+    </div>
+    <kc-tooltip>{{:: 'identity-provider.idp-proxy.proxyUrl.tooltip' | translate}}</kc-tooltip>
+</div>
+<div class="form-group">
+    <label class="col-md-2 control-label" for="idpType"><span class="required">*</span>{{:: 'identity-provider.idp-proxy.idpType.label' | translate}}</label>
+    <div class="col-md-6">
+        <div>
+            <select class="form-control" id="idpType"  ng-model="identityProvider.config.idpType" required>
+                <option value="gitee">Gitee</option>
+                <option value="github">Github</option>
+                <option value="oschina">开源中国</option>
+                <option value="coding">Coding</option>
+                <option value="weibo">Weibo</option>
+                <option value="dingtalk">钉钉</option>
+                <option value="baidu">百度</option>
+                <option value="alipay">支付宝</option>
+                <option value="qq">QQ</option>
+                <option value="wechat_open">微信开放平台</option>
+                <option value="csdn">csdn</option>
+                <option value="taobao">淘宝</option>
+                <option value="google">Google</option>
+                <option value="facebook">Facebook</option>
+                <option value="douyin">抖音</option>
+                <option value="linkedin">linkedin</option>
+                <option value="microsoft">microsoft</option>
+                <option value="mi">小米</option>
+                <option value="toutiao">头条</option>
+                <option value="teambition">teambition</option>
+                <option value="pinterest">pinterest</option>
+                <option value="renren">renren</option>
+                <option value="stack_overflow">Stack Overflow</option>
+                <option value="huawei">华为</option>
+                <option value="wechat_enterprise">微信企业号</option>
+                <option value="kujiale">kujiale</option>
+                <option value="gitlab">Gitlab</option>
+                <option value="meituan">美团</option>
+                <option value="eleme">饿了么</option>
+                <option value="mygitlab">自定义Gitlab</option>
+                <option value="twitter">Twitter</option>
+                <option value="wechat_mp">微信公众平台</option>
+                <option value="aliyun">阿里云</option>
+                <option value="proxy">完全外部代理</option>
+            </select>
+        </div>
+    </div>
+    <kc-tooltip>{{:: 'identity-provider.idp-proxy.idpType.tooltip' | translate}}</kc-tooltip>
+</div>
+<div class="form-group">
+    <label class="col-md-2 control-label" for="extraConfig">{{:: 'identity-provider.idp-proxy.extraConfig.label' | translate}}</label>
+    <div class="col-md-6">
+        <input class="form-control" id="extraConfig" ng-model="identityProvider.config.extraConfig">
+    </div>
+    <kc-tooltip>{{:: 'identity-provider.idp-proxy.extraConfig.tooltip' | translate}}</kc-tooltip>
+</div>

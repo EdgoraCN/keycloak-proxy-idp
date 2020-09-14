@@ -1,4 +1,4 @@
-package org.keycloak.social.wechat;
+package org.keycloak.social.proxy;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -38,7 +38,7 @@ import java.util.zip.GZIPInputStream;
 public class SimpleHttp {
 
 
-    private static final ObjectMapper mapper = new ObjectMapper();
+    public static final ObjectMapper mapper = new ObjectMapper();
 
     private HttpClient client;
 
@@ -284,7 +284,11 @@ public class SimpleHttp {
         }
 
         public JsonNode asJson() throws IOException {
-            return mapper.readTree(asString());
+            return asJson(asString());
+        }
+
+        public JsonNode asJson(String src) throws IOException {
+            return mapper.readTree(src);
         }
 
         public <T> T asJson(Class<T> type) throws IOException {

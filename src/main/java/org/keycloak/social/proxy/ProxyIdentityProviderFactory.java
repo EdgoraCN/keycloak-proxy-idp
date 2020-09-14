@@ -14,32 +14,33 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.keycloak.social.wechat;
+package org.keycloak.social.proxy;
 
 import org.keycloak.broker.provider.AbstractIdentityProviderFactory;
-import org.keycloak.broker.social.SocialIdentityProviderFactory;
 import org.keycloak.models.IdentityProviderModel;
 import org.keycloak.models.KeycloakSession;
+import org.keycloak.broker.social.SocialIdentityProviderFactory;
 
+public class ProxyIdentityProviderFactory extends  AbstractIdentityProviderFactory<ProxyIdentityProvider> implements SocialIdentityProviderFactory<ProxyIdentityProvider>{
 
-public class WechatWorkIdentityProviderFactory extends AbstractIdentityProviderFactory<WechatWorkIdentityProvider>
-		implements SocialIdentityProviderFactory<WechatWorkIdentityProvider> {
-
-    public static final String PROVIDER_ID = "wechat-work";
+    public static final String PROVIDER_ID = "proxy-idp";
 
     @Override
     public String getName() {
-        return "企业微信登陆";
+        return "Proxy IDP";
+    }
+    public ProxyIdentityProviderFactory(){
+        
     }
 
     @Override
-    public WechatWorkIdentityProvider create(KeycloakSession session, IdentityProviderModel model) {
-        return new WechatWorkIdentityProvider(session, new WechatWorkProviderConfig(model));
+    public ProxyIdentityProvider create(KeycloakSession session, IdentityProviderModel model) {
+        return new ProxyIdentityProvider(session, new ProxyProviderConfig(model));
     }
 
     @Override
-    public WechatWorkProviderConfig createConfig() {
-        return new  WechatWorkProviderConfig();
+    public ProxyProviderConfig createConfig() {
+        return new  ProxyProviderConfig();
     }
 
     @Override
