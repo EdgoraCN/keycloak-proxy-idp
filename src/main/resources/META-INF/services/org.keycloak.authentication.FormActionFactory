@@ -1,0 +1,4 @@
+org.keycloak.authentication.form.RegistrationPassword
+org.keycloak.authentication.form.RegistrationProfile
+org.keycloak.authentication.form.RegistrationUserCreation
+org.keycloak.authentication.form.RegistrationRecaptcha
