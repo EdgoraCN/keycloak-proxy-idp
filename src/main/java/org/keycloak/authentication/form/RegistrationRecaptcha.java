@@ -64,6 +64,7 @@ public class RegistrationRecaptcha implements FormAction, FormActionFactory, Con
     public static final String SITE_KEY = "site.key";
     public static final String SITE_SECRET = "secret";
     public static final String USE_RECAPTCHA_NET = "useRecaptchaNet";
+    public static final String CUSTOM_RECAPTCHA_NET = "customRecaptchaNet";
     private static final Logger logger = Logger.getLogger(RegistrationRecaptcha.class);
 
     public static final String PROVIDER_ID = "registration-recaptcha-action";
@@ -141,10 +142,14 @@ public class RegistrationRecaptcha implements FormAction, FormActionFactory, Con
                 .map(configModel -> configModel.getConfig())
                 .map(cfg -> Boolean.valueOf(cfg.get(USE_RECAPTCHA_NET)))
                 .orElse(false);
-        if (useRecaptcha) {
+        String customDomain = Optional.ofNullable(config)
+        .map(configModel -> configModel.getConfig())
+        .map(cfg -> cfg.get(CUSTOM_RECAPTCHA_NET)).orElse("");
+        if(!Validation.isBlank(customDomain)){
+            return customDomain.trim();
+        }else if (useRecaptcha) {
             return "recaptcha.net";
         }
-
         return "google.com";
     }
 
@@ -245,6 +250,12 @@ public class RegistrationRecaptcha implements FormAction, FormActionFactory, Con
         property.setType(ProviderConfigProperty.STRING_TYPE);
         property.setHelpText("Google Recaptcha Secret");
         CONFIG_PROPERTIES.add(property);
+
+        property = new ProviderConfigProperty();
+        property.setName(CUSTOM_RECAPTCHA_NET);
+        property.setLabel("custom domain");
+        property.setType(ProviderConfigProperty.STRING_TYPE);
+        property.setHelpText("Use custom domain instead of recaptcha.net?");
 
         property = new ProviderConfigProperty();
         property.setName(USE_RECAPTCHA_NET);
