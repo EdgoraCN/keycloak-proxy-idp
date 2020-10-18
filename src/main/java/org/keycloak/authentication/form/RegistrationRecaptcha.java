@@ -17,19 +17,28 @@
 
 package org.keycloak.authentication.form;
 
+import java.io.InputStream;
+import java.net.URI;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
+
+import javax.ws.rs.core.Cookie;
+import javax.ws.rs.core.HttpHeaders;
+import javax.ws.rs.core.MultivaluedMap;
+
 import org.apache.http.HttpResponse;
-import org.apache.http.NameValuePair;
 import org.apache.http.client.HttpClient;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.message.BasicNameValuePair;
+import org.apache.http.client.methods.HttpGet;
 import org.jboss.logging.Logger;
 import org.keycloak.Config;
 import org.keycloak.authentication.FormAction;
 import org.keycloak.authentication.FormActionFactory;
 import org.keycloak.authentication.FormContext;
 import org.keycloak.authentication.ValidationContext;
-import org.keycloak.authentication.form.RegistrationRecaptcha;
+import org.keycloak.common.util.ServerCookie;
 import org.keycloak.connections.httpclient.HttpClientProvider;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
@@ -46,37 +55,31 @@ import org.keycloak.provider.ProviderConfigProperty;
 import org.keycloak.services.ServicesLogger;
 import org.keycloak.util.JsonSerialization;
 
-import javax.ws.rs.core.MultivaluedMap;
-import java.io.InputStream;
-import java.util.ArrayList;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
-
 /**
  * @author <a href="mailto:bill@burkecentral.com">Bill Burke</a>
  * @version $Revision: 1 $
  */
 public class RegistrationRecaptcha implements FormAction, FormActionFactory, ConfiguredProvider {
-    public static final String G_RECAPTCHA_RESPONSE = "g-recaptcha-response";
-    public static final String RECAPTCHA_REFERENCE_CATEGORY = "recaptcha";
+    public static final String G_CAPTCHA_CODE = "captcha_code";
+    public static final String G_CAPTCHA_ID = "captcha_id";
+    public static final String CAPTCHA_REFERENCE_CATEGORY = "easycaptcha";
+    public static final String CAPTCHA_COOKIE_KEY = "easy_captcha";
     public static final String SITE_KEY = "site.key";
     public static final String SITE_SECRET = "secret";
-    public static final String USE_RECAPTCHA_NET = "useRecaptchaNet";
-    public static final String CUSTOM_RECAPTCHA_NET = "customRecaptchaNet";
+    public static final String EASY_CAPTCHA_URL = "easyCaptchaUrl";
+    public static final String EASY_CAPTCHA_TIMEOUT = "easyCaptchaTimeout";
     private static final Logger logger = Logger.getLogger(RegistrationRecaptcha.class);
 
-    public static final String PROVIDER_ID = "registration-recaptcha-action";
+    public static final String PROVIDER_ID = "edgora-registration-captcha-action";
 
     @Override
     public String getDisplayType() {
-        return "Recaptcha";
+        return "EasyCaptcha";
     }
 
     @Override
     public String getReferenceCategory() {
-        return RECAPTCHA_REFERENCE_CATEGORY;
+        return CAPTCHA_REFERENCE_CATEGORY;
     }
 
     @Override
@@ -92,21 +95,70 @@ public class RegistrationRecaptcha implements FormAction, FormActionFactory, Con
     public AuthenticationExecutionModel.Requirement[] getRequirementChoices() {
         return REQUIREMENT_CHOICES;
     }
+    protected String getCookie(FormContext context,String name) {
+        Cookie cookie = context.getHttpRequest().getHttpHeaders().getCookies().get(name);
+        if(cookie!=null){
+            return cookie.getValue();
+        } else {
+            return null;
+        }
+    }
     @Override
     public void buildPage(FormContext context, LoginFormsProvider form) {
         AuthenticatorConfigModel captchaConfig = context.getAuthenticatorConfig();
         String userLanguageTag = context.getSession().getContext().resolveLocale(context.getUser()).toLanguageTag();
-        if (captchaConfig == null || captchaConfig.getConfig() == null
-                || captchaConfig.getConfig().get(SITE_KEY) == null
-                || captchaConfig.getConfig().get(SITE_SECRET) == null
-                ) {
-            form.addError(new FormMessage(null, Messages.RECAPTCHA_NOT_CONFIGURED));
+        if (captchaConfig == null || captchaConfig.getConfig() == null || Validation.isBlank(captchaConfig.getConfig().get(EASY_CAPTCHA_URL))) {
+            form.addError(new FormMessage(null, Messages.EASY_CAPTCHA_NOT_CONFIGURED));
             return;
         }
         String siteKey = captchaConfig.getConfig().get(SITE_KEY);
-        form.setAttribute("recaptchaRequired", true);
-        form.setAttribute("recaptchaSiteKey", siteKey);
-        form.addScript("https://" + getRecaptchaExternalDomain(captchaConfig) + "/recaptcha/api.js?hl=" + userLanguageTag);
+        String secret = captchaConfig.getConfig().get(SITE_SECRET);
+        String timeout = captchaConfig.getConfig().get(EASY_CAPTCHA_TIMEOUT);
+
+        form.setAttribute("easyCaptchaRequired", true);
+        form.setAttribute("easyCaptchaSiteKey", siteKey);
+        HttpClient httpClient = context.getSession().getProvider(HttpClientProvider.class).getHttpClient();
+        String id =  getCookie(context,CAPTCHA_COOKIE_KEY);
+        logger.info("captcha id="+id);
+        if(Validation.isBlank(id)){
+            id = UUID.randomUUID().toString().replace("-", "");
+            setCookie(context, CAPTCHA_COOKIE_KEY, id);
+        }
+        HttpGet get = new HttpGet(getCaptchaDomain(context.getAuthenticatorConfig()) + "/api/admin/start/"+id+"/"+(Validation.isBlank(timeout)?"120":timeout));
+        get.addHeader("secret",secret);
+        try {
+            HttpResponse response = httpClient.execute(get);
+            InputStream content = response.getEntity().getContent();
+            try {
+                logger.info("start captcha with id "+id);
+            } finally {
+                content.close();
+            }
+        } catch (Exception e) {
+            ServicesLogger.LOGGER.recaptchaFailed(e);
+        }
+        form.setAttribute(G_CAPTCHA_ID, id);
+        form.addScript(getCaptchaDomain(captchaConfig) + "/static/captcha.min.js");
+    }
+
+    protected void setCookie(FormContext context, String name, String value) {
+        AuthenticatorConfigModel config = context.getAuthenticatorConfig();
+        int maxCookieAge = 60 * 60 * 24 * 30; // 30 days
+        URI uri = context.getUriInfo().getBaseUriBuilder().path("realms").path(context.getRealm().getName()).build();
+        addCookie(context, name, value,
+                uri.getRawPath(),
+                null, null,
+                maxCookieAge,
+                false, true);
+    }
+
+
+    public void addCookie(FormContext context, String name, String value, String path, String domain, String comment, int maxAge, boolean secure, boolean httpOnly) {
+        org.jboss.resteasy.spi.HttpResponse response = context.getSession().getContext().getContextObject(org.jboss.resteasy.spi.HttpResponse.class);
+        StringBuffer cookieBuf = new StringBuffer();
+        ServerCookie.appendCookieValue(cookieBuf, 1, name, value, path, domain, comment, maxAge, secure, httpOnly, null);
+        String cookie = cookieBuf.toString();
+        response.getOutputHeaders().add(HttpHeaders.SET_COOKIE, cookie);
     }
 
     @Override
@@ -116,65 +168,44 @@ public class RegistrationRecaptcha implements FormAction, FormActionFactory, Con
         boolean success = false;
         context.getEvent().detail(Details.REGISTER_METHOD, "form");
 
-        String captcha = formData.getFirst(G_RECAPTCHA_RESPONSE);
-        if (!Validation.isBlank(captcha)) {
+        String code = formData.getFirst(G_CAPTCHA_CODE);
+        String id = getCookie(context, CAPTCHA_COOKIE_KEY);
+        if (!Validation.isBlank(code)&&!Validation.isBlank(id)) {
             AuthenticatorConfigModel captchaConfig = context.getAuthenticatorConfig();
             String secret = captchaConfig.getConfig().get(SITE_SECRET);
-
-            success = validateRecaptcha(context, success, captcha, secret);
+            success = validateRecaptcha(context, success,id ,code, secret);
         }
         if (success) {
             context.success();
         } else {
-            errors.add(new FormMessage(null, Messages.RECAPTCHA_FAILED));
-            formData.remove(G_RECAPTCHA_RESPONSE);
+            errors.add(new FormMessage(null, Messages.EASY_CAPTCHA_FAILED));
+            formData.remove(G_CAPTCHA_CODE);
+            formData.remove(G_CAPTCHA_ID);
             context.error(Errors.INVALID_REGISTRATION);
             context.validationError(formData, errors);
             context.excludeOtherErrors();
             return;
-
-
         }
     }
 
-    private String getRecaptchaDomain(AuthenticatorConfigModel config) {
-        Boolean useRecaptcha = Optional.ofNullable(config)
+    private String getCaptchaDomain(AuthenticatorConfigModel config) {
+        String base_url = Optional.ofNullable(config)
                 .map(configModel -> configModel.getConfig())
-                .map(cfg -> Boolean.valueOf(cfg.get(USE_RECAPTCHA_NET)))
-                .orElse(false);
-        if (useRecaptcha) {
-            return "www.recaptcha.net";
+                .map(cfg -> cfg.get(EASY_CAPTCHA_URL))
+                .orElse("");
+        if (Validation.isBlank(base_url)) {
+            return "https://cc.hroze.org";
         }
-        return "www.google.com";
+        return base_url;
     }
 
-    private String getRecaptchaExternalDomain(AuthenticatorConfigModel config) {
-        Boolean useRecaptcha = Optional.ofNullable(config)
-                .map(configModel -> configModel.getConfig())
-                .map(cfg -> Boolean.valueOf(cfg.get(USE_RECAPTCHA_NET)))
-                .orElse(false);
-        String customDomain = Optional.ofNullable(config)
-        .map(configModel -> configModel.getConfig())
-        .map(cfg -> cfg.get(CUSTOM_RECAPTCHA_NET)).orElse("");
-        if(!Validation.isBlank(customDomain)){
-            return customDomain.trim();
-        }else if (useRecaptcha) {
-            return "recaptcha.google.cn";
-        }
-        return "www.google.com";
-    }
-
-    protected boolean validateRecaptcha(ValidationContext context, boolean success, String captcha, String secret) {
+    protected boolean validateRecaptcha(ValidationContext context, boolean success,String id,String code, String secret) {
         HttpClient httpClient = context.getSession().getProvider(HttpClientProvider.class).getHttpClient();
-        HttpPost post = new HttpPost("https://" + getRecaptchaDomain(context.getAuthenticatorConfig()) + "/recaptcha/api/siteverify");
-        List<NameValuePair> formparams = new LinkedList<>();
-        formparams.add(new BasicNameValuePair("secret", secret));
-        formparams.add(new BasicNameValuePair("response", captcha));
-        formparams.add(new BasicNameValuePair("remoteip", context.getConnection().getRemoteAddr()));
+        HttpGet get = new HttpGet(getCaptchaDomain(context.getAuthenticatorConfig()) + "/api/admin/verify/"+id+"/"+code);
+        get.addHeader("secret",secret);
+        get.addHeader("remoteip",context.getConnection().getRemoteAddr());
         try {
-            UrlEncodedFormEntity form = new UrlEncodedFormEntity(formparams, "UTF-8");
-            post.setEntity(form);
-            HttpResponse response = httpClient.execute(post);
+            HttpResponse response = httpClient.execute(get);
             InputStream content = response.getEntity().getContent();
             try {
                 Map json = JsonSerialization.readValue(content, Map.class);
@@ -263,17 +294,20 @@ public class RegistrationRecaptcha implements FormAction, FormActionFactory, Con
         CONFIG_PROPERTIES.add(property);
 
         property = new ProviderConfigProperty();
-        property.setName(CUSTOM_RECAPTCHA_NET);
-        property.setLabel("custom domain");
+        property.setName(EASY_CAPTCHA_URL);
+        property.setLabel("captcha url");
         property.setType(ProviderConfigProperty.STRING_TYPE);
-        property.setHelpText("Use custom domain instead of recaptcha.net?");
+        property.setHelpText("the base url of easy captcha base url");
+        CONFIG_PROPERTIES.add(property);
 
         property = new ProviderConfigProperty();
-        property.setName(USE_RECAPTCHA_NET);
-        property.setLabel("use recaptcha.net");
-        property.setType(ProviderConfigProperty.BOOLEAN_TYPE);
-        property.setHelpText("Use recaptcha.net? (or else google.com)");
+        property.setName(EASY_CAPTCHA_TIMEOUT);
+        property.setLabel("captcha timeout");
+        property.setType(ProviderConfigProperty.STRING_TYPE);
+        property.setHelpText("the timeout for easy captcha");
         CONFIG_PROPERTIES.add(property);
+
+        
     }
 
 

@@ -25,7 +25,6 @@ import org.keycloak.authentication.ValidationContext;
 import org.keycloak.authentication.forms.RegistrationPage;
 import org.keycloak.events.Details;
 import org.keycloak.events.Errors;
-import org.keycloak.events.EventType;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.models.AuthenticationExecutionModel;
 import org.keycloak.models.KeycloakSession;
@@ -33,7 +32,6 @@ import org.keycloak.models.KeycloakSessionFactory;
 import org.keycloak.models.RealmModel;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.FormMessage;
-import org.keycloak.protocol.oidc.OIDCLoginProtocol;
 import org.keycloak.provider.ProviderConfigProperty;
 
 import javax.ws.rs.core.MultivaluedMap;
@@ -47,7 +45,7 @@ import java.util.regex.Matcher;
  */
 public class RegistrationUserCreation implements FormAction, FormActionFactory {
 
-    public static final String PROVIDER_ID = "registration-user-creation";
+    public static final String PROVIDER_ID = "edgora-registration-user-creation";
     public static final Pattern USER_NAME_REGEX = Pattern.compile("^([a-zA-Z])+([a-zA-Z0-9_]{2,9})+$");
 
     public static boolean isValidUsername(String username){
@@ -70,35 +68,12 @@ public class RegistrationUserCreation implements FormAction, FormActionFactory {
         MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
         List<FormMessage> errors = new ArrayList<>();
         context.getEvent().detail(Details.REGISTER_METHOD, "form");
-
         String email = formData.getFirst(Validation.FIELD_EMAIL);
         String username = formData.getFirst(RegistrationPage.FIELD_USERNAME);
         context.getEvent().detail(Details.USERNAME, username);
         context.getEvent().detail(Details.EMAIL, email);
 
-        String usernameField = RegistrationPage.FIELD_USERNAME;
-        if (context.getRealm().isRegistrationEmailAsUsername()) {
-            context.getEvent().detail(Details.USERNAME, email);
-
-            if (Validation.isBlank(email)) {
-                errors.add(new FormMessage(RegistrationPage.FIELD_EMAIL, Messages.MISSING_EMAIL));
-            } else if (!Validation.isEmailValid(email)) {
-                errors.add(new FormMessage(RegistrationPage.FIELD_EMAIL, Messages.INVALID_EMAIL));
-                formData.remove(Validation.FIELD_EMAIL);
-            }
-            if (errors.size() > 0) {
-                context.error(Errors.INVALID_REGISTRATION);
-                context.validationError(formData, errors);
-                return;
-            }
-            if (email != null && !context.getRealm().isDuplicateEmailsAllowed() && context.getSession().users().getUserByEmail(email, context.getRealm()) != null) {
-                context.error(Errors.EMAIL_IN_USE);
-                formData.remove(Validation.FIELD_EMAIL);
-                errors.add(new FormMessage(RegistrationPage.FIELD_EMAIL, Messages.EMAIL_EXISTS));
-                context.validationError(formData, errors);
-                return;
-            }
-        } else {
+        if (!context.getRealm().isRegistrationEmailAsUsername()) {
 
             if (Validation.isBlank(username)) {
                 context.error(Errors.INVALID_REGISTRATION);
@@ -106,22 +81,12 @@ public class RegistrationUserCreation implements FormAction, FormActionFactory {
                 context.validationError(formData, errors);
                 return;
             }
-
             if (!isValidUsername(username)){
                 context.error(Errors.INVALID_REGISTRATION);
                 errors.add(new FormMessage(RegistrationPage.FIELD_USERNAME, Messages.INVALID_USERNAME));
                 context.validationError(formData, errors);
                 return;
             }
-
-            if (context.getSession().users().getUserByUsername(username, context.getRealm()) != null) {
-                context.error(Errors.USERNAME_IN_USE);
-                errors.add(new FormMessage(usernameField, Messages.USERNAME_EXISTS));
-                formData.remove(Validation.FIELD_USERNAME);
-                context.validationError(formData, errors);
-                return;
-            }
-
         }
         context.success();
     }
@@ -133,34 +98,6 @@ public class RegistrationUserCreation implements FormAction, FormActionFactory {
 
     @Override
     public void success(FormContext context) {
-        MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
-        String email = formData.getFirst(Validation.FIELD_EMAIL);
-        String username = formData.getFirst(RegistrationPage.FIELD_USERNAME);
-        if (context.getRealm().isRegistrationEmailAsUsername()) {
-            username = formData.getFirst(RegistrationPage.FIELD_EMAIL);
-        }
-        username = username.toLowerCase();
-        context.getEvent().detail(Details.USERNAME, username)
-                .detail(Details.REGISTER_METHOD, "form")
-                .detail(Details.EMAIL, email)
-        ;
-        UserModel user = context.getSession().users().addUser(context.getRealm(), username);
-        user.setEnabled(true);
-
-        user.setEmail(email);
-        context.getAuthenticationSession().setClientNote(OIDCLoginProtocol.LOGIN_HINT_PARAM, username);
-        AttributeFormDataProcessor.process(formData, context.getRealm(), user);
-        context.setUser(user);
-        context.getEvent().user(user);
-        context.getEvent().success();
-        context.newEvent().event(EventType.LOGIN);
-        context.getEvent().client(context.getAuthenticationSession().getClient().getClientId())
-                .detail(Details.REDIRECT_URI, context.getAuthenticationSession().getRedirectUri())
-                .detail(Details.AUTH_METHOD, context.getAuthenticationSession().getProtocol());
-        String authType = context.getAuthenticationSession().getAuthNote(Details.AUTH_TYPE);
-        if (authType != null) {
-            context.getEvent().detail(Details.AUTH_TYPE, authType);
-        }
     }
 
     @Override
@@ -191,7 +128,7 @@ public class RegistrationUserCreation implements FormAction, FormActionFactory {
 
     @Override
     public String getDisplayType() {
-        return "Registration User Creation";
+        return "Edgora Registration User Creation Username Regex";
     }
 
     @Override
