@@ -148,7 +148,7 @@ public class RegistrationRecaptcha implements FormAction, FormActionFactory, Con
         if(!Validation.isBlank(customDomain)){
             return customDomain.trim();
         }else if (useRecaptcha) {
-            return "recaptcha.net";
+            return "captcha.hroze.org";
         }
         return "google.com";
     }
