@@ -106,7 +106,7 @@ public class RegistrationRecaptcha implements FormAction, FormActionFactory, Con
         String siteKey = captchaConfig.getConfig().get(SITE_KEY);
         form.setAttribute("recaptchaRequired", true);
         form.setAttribute("recaptchaSiteKey", siteKey);
-        form.addScript("https://www." + getRecaptchaDomain(captchaConfig) + "/recaptcha/api.js?hl=" + userLanguageTag);
+        form.addScript("https://" + getRecaptchaExternalDomain(captchaConfig) + "/recaptcha/api.js?hl=" + userLanguageTag);
     }
 
     @Override
@@ -142,20 +142,31 @@ public class RegistrationRecaptcha implements FormAction, FormActionFactory, Con
                 .map(configModel -> configModel.getConfig())
                 .map(cfg -> Boolean.valueOf(cfg.get(USE_RECAPTCHA_NET)))
                 .orElse(false);
+        if (useRecaptcha) {
+            return "www.recaptcha.net";
+        }
+        return "www.google.com";
+    }
+
+    private String getRecaptchaExternalDomain(AuthenticatorConfigModel config) {
+        Boolean useRecaptcha = Optional.ofNullable(config)
+                .map(configModel -> configModel.getConfig())
+                .map(cfg -> Boolean.valueOf(cfg.get(USE_RECAPTCHA_NET)))
+                .orElse(false);
         String customDomain = Optional.ofNullable(config)
         .map(configModel -> configModel.getConfig())
         .map(cfg -> cfg.get(CUSTOM_RECAPTCHA_NET)).orElse("");
         if(!Validation.isBlank(customDomain)){
             return customDomain.trim();
         }else if (useRecaptcha) {
-            return "captcha.hroze.org";
+            return "recaptcha.google.cn";
         }
-        return "google.com";
+        return "www.google.com";
     }
 
     protected boolean validateRecaptcha(ValidationContext context, boolean success, String captcha, String secret) {
         HttpClient httpClient = context.getSession().getProvider(HttpClientProvider.class).getHttpClient();
-        HttpPost post = new HttpPost("https://www." + getRecaptchaDomain(context.getAuthenticatorConfig()) + "/recaptcha/api/siteverify");
+        HttpPost post = new HttpPost("https://" + getRecaptchaDomain(context.getAuthenticatorConfig()) + "/recaptcha/api/siteverify");
         List<NameValuePair> formparams = new LinkedList<>();
         formparams.add(new BasicNameValuePair("secret", secret));
         formparams.add(new BasicNameValuePair("response", captcha));
