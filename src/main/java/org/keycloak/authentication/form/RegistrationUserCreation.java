@@ -46,12 +46,8 @@ import java.util.regex.Matcher;
 public class RegistrationUserCreation implements FormAction, FormActionFactory {
 
     public static final String PROVIDER_ID = "edgora-registration-user-creation";
-    public static final Pattern USER_NAME_REGEX = Pattern.compile("^([a-zA-Z])+([a-zA-Z0-9_]{2,9})+$");
 
-    public static boolean isValidUsername(String username){
-        Matcher matcher = USER_NAME_REGEX.matcher(username);
-        return matcher.matches();
-    }
+   
 
     @Override
     public String getHelpText() {
@@ -81,7 +77,7 @@ public class RegistrationUserCreation implements FormAction, FormActionFactory {
                 context.validationError(formData, errors);
                 return;
             }
-            if (!isValidUsername(username)){
+            if (!Validation.isValidUsername(username)){
                 context.error(Errors.INVALID_REGISTRATION);
                 errors.add(new FormMessage(RegistrationPage.FIELD_USERNAME, Messages.INVALID_USERNAME));
                 context.validationError(formData, errors);

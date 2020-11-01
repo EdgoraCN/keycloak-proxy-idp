@@ -29,6 +29,7 @@ import org.keycloak.representations.idm.CredentialRepresentation;
 import javax.ws.rs.core.MultivaluedMap;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class Validation {
@@ -42,12 +43,22 @@ public class Validation {
     
     // Actually allow same emails like angular. See ValidationTest.testEmailValidation()
     private static final Pattern EMAIL_PATTERN = Pattern.compile("[a-zA-Z0-9!#$%&'*+/=?^_`{|}~.-]+@[a-zA-Z0-9-]+(\\.[a-zA-Z0-9-]+)*");
+    public static final Pattern USER_NAME_REGEX = Pattern.compile("^([a-zA-Z])+([a-zA-Z0-9_]{2,9})+$");
+
+    public static boolean isValidUsername(String username){
+        Matcher matcher = USER_NAME_REGEX.matcher(username);
+        return matcher.matches();
+    }
 
     public static List<FormMessage> validateRegistrationForm(KeycloakSession session, RealmModel realm, MultivaluedMap<String, String> formData, List<String> requiredCredentialTypes, PasswordPolicy policy) {
         List<FormMessage> errors = new ArrayList<>();
 
         if (!realm.isRegistrationEmailAsUsername() && isBlank(formData.getFirst(FIELD_USERNAME))) {
             addError(errors, FIELD_USERNAME, Messages.MISSING_USERNAME);
+        }
+
+        if(!realm.isRegistrationEmailAsUsername() && !isValidUsername(formData.getFirst(FIELD_USERNAME))){
+            addError(errors, FIELD_USERNAME, Messages.INVALID_USERNAME);
         }
 
         if (isBlank(formData.getFirst(FIELD_FIRST_NAME))) {
@@ -95,7 +106,9 @@ public class Validation {
         if (!realm.isRegistrationEmailAsUsername() && userNameRequired && isBlank(formData.getFirst(FIELD_USERNAME))) {
             addError(errors, FIELD_USERNAME, Messages.MISSING_USERNAME);
         }
-
+        if(!realm.isRegistrationEmailAsUsername() && userNameRequired && !isValidUsername(formData.getFirst(FIELD_USERNAME))){
+            addError(errors, FIELD_USERNAME, Messages.INVALID_USERNAME);
+        }
         if (isBlank(formData.getFirst(FIELD_FIRST_NAME))) {
             addError(errors, FIELD_FIRST_NAME, Messages.MISSING_FIRST_NAME);
         }
